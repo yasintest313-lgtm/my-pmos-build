@@ -1,0 +1,33 @@
+name: Build postmarketOS
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install pmbootstrap
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip git
+          pip3 install --user pmbootstrap
+
+      - name: Init pmbootstrap non-interactive
+        run: |
+          echo -e "samsung-a2corelte\nnone\nn\nn\n" | ~/.local/bin/pmbootstrap init
+
+      - name: Build image
+        run: |
+          ~/.local/bin/pmbootstrap install --password 12345678 --no-fde
+
+      - name: Export image
+        run: |
+          ~/.local/bin/pmbootstrap export
+          mkdir out
+          cp /tmp/postmarketOS-export/* out/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmos-a2corelte
+          path: out/
