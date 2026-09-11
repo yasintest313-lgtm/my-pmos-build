@@ -1,47 +1,27 @@
 name: Build postmarketOS
 on:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: postmarketos/pmaports:latest
+    
     steps:
-      - name: Install dependencies
+      - name: Build postmarketOS
         run: |
-          sudo apt update
-          sudo apt install -y python3-pip python3-venv git
+          pmbootstrap init --device=samsung-a2corelte --ui=none --password=12345678
+          pmbootstrap install --no-fde
+          pmbootstrap export
 
-      - name: Clone pmbootstrap
-        run: git clone https://gitlab.com/postmarketOS/pmbootstrap.git
-
-      - name: Create config
+      - name: Prepare artifacts
         run: |
-          mkdir -p ~/.config/pmbootstrap
-          cat > ~/.config/pmbootstrap/pmbootstrap.cfg << 'EOF'
-          [pmbootstrap]
-          aports = /root/.local/var/pmbootstrap/cache_git/pmaports
-          ccache_size = 5G
-          device = samsung-a2corelte
-          extra_packages = 
-          keymap = us
-          locale = en_US.UTF-8
-          mirror_alpine = http://dl-cdn.alpinelinux.org/alpine/
-          ui = none
-          EOF
+          mkdir -p /tmp/artifacts
+          cp -r /tmp/postmarketOS-export/* /tmp/artifacts/ || true
 
-      - name: Build
-        run: |
-          cd pmbootstrap
-          python3 pmbootstrap.py install --password 12345678 --no-fde
-
-      - name: Export
-        run: |
-          cd pmbootstrap
-          python3 pmbootstrap.py export
-          mkdir -p ../out
-          cp -r /tmp/postmarketOS-export/* ../out/ || true
-
-      - name: Upload
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pmos-a2corelte
-          path: out/
+          path: /tmp/artifacts/
