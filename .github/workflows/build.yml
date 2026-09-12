@@ -1,27 +1,81 @@
-name: Build postmarketOS
+name: Build postmarketOS image (samsung-a2corelte, phosh)
+
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}   # از تب Actions دستی اجرا کن
+  push:
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: postmarketos/pmaports:latest
-    
+    timeout-minutes: 350   # نزدیک به سقف 6 ساعته
     steps:
-      - name: Build postmarketOS
-        run: |
-          pmbootstrap init --device=samsung-a2corelte --ui=none --password=12345678
-          pmbootstrap install --no-fde
-          pmbootstrap export
+      - name: Checkout (اختیاری، اگر ریپو مخصوص خودت باشه)
+        uses: actions/checkout@v4
 
-      - name: Prepare artifacts
+      - name: Install dependencies
         run: |
-          mkdir -p /tmp/artifacts
-          cp -r /tmp/postmarketOS-export/* /tmp/artifacts/ || true
+          sudo apt-get update
+          sudo apt-get install -y git python3-pip sudo openssl procps \
+            fakeroot android-sdk-libsparse-utils
 
-      - name: Upload artifacts
+      - name: Install pmbootstrap
+        run: |
+          pip3 install --user --upgrade pmbootstrap
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Write pmbootstrap config (non-interactive)
+        run: |
+          pmbootstrap config device samsung-a2corelte
+          pmbootstrap config ui phosh
+          pmbootstrap config nonfree_firmware True
+          pmbootstrap config nonfree_userland False
+          pmbootstrap config jobs $(nproc)
+          pmbootstrap config user pmos
+          pmbootstrap config timezone Etc/UTC
+          pmbootstrap config locale en_US.UTF-8
+
+      - name: Pull pmaports
+        run: pmbootstrap pull
+
+      - name: Build image
+        run: |
+          # ممکنه لازم باشه kernel رو جدا build کنی اگر device docs همچین چیزی بگه:
+          # pmbootstrap build linux-postmarketos-exynos7870
+          pmbootstrap install --no-fde --add openssh
+
+      - name: Export image files
+        run: pmbootstrap export
+
+      - name: Locate exported files
+        run: |
+          ls -la ~/.local/var/pmbootstrap/export/ || \
+          ls -la ~/.local/var/pmbootstrap/chroot_native/tmp/postmarketOS-export/
+
+      - name: Package as Odin/Eros tar.md5
+        run: |
+          set -e
+          EXPORT_DIR=~/.local/var/pmbootstrap/export
+          cd "$EXPORT_DIR"
+          ls -la
+
+          # نام فایل‌ها رو اینجا با اسم واقعی که pmbootstrap export تولید کرده جایگزین کن
+          # و اسم داخل tar رو با نام پارتیشن PIT گوشی (boot.img / system.img ...) هماهنگ کن.
+          mkdir -p odin_package
+          cp samsung-a2corelte-boot.img odin_package/boot.img
+          cp samsung-a2corelte.img odin_package/system.img
+
+          cd odin_package
+          tar -H ustar -c boot.img system.img > firmware.tar
+          md5sum -t firmware.tar >> firmware.tar
+          mv firmware.tar firmware.tar.md5
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pmos-a2corelte
-          path: /tmp/artifacts/
+          name: samsung-a2corelte-phosh-image
+          path: |
+            ~/.local/var/pmbootstrap/export/**
+            ~/.local/var/pmbootstrap/export/odin_package/firmware.tar.md5
+          if-no-files-found: warn
+          retention-days: 7
