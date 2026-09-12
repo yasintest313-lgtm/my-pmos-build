@@ -32,8 +32,6 @@ jobs:
         run: |
           pmbootstrap config device samsung-a2corelte
           pmbootstrap config ui phosh
-          pmbootstrap config nonfree_firmware True
-          pmbootstrap config nonfree_userland False
           pmbootstrap config jobs $(nproc)
           pmbootstrap config user pmos
           pmbootstrap config timezone Etc/UTC
