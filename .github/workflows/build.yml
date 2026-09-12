@@ -21,8 +21,8 @@ jobs:
 
       - name: Install pmbootstrap
         run: |
-          pip3 install --user --upgrade --break-system-packages pmbootstrap
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git ~/pmbootstrap
+          echo "$HOME/pmbootstrap" >> $GITHUB_PATH
 
       - name: Write pmbootstrap config (non-interactive)
         run: |
