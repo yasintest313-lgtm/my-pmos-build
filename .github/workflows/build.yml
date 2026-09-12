@@ -40,6 +40,12 @@ jobs:
       - name: Pull pmaports
         run: pmbootstrap pull
 
+      - name: Debug - check device exists
+        run: |
+          find ~/.local/var/pmbootstrap/cache_git/pmaports -iname '*a2corelte*' -o -iname '*a2core*'
+          echo "---"
+          pmbootstrap config device
+
       - name: Build image
         run: |
           # ممکنه لازم باشه kernel رو جدا build کنی اگر device docs همچین چیزی بگه:
